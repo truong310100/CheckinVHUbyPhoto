@@ -121,7 +121,7 @@ export default function WebcamCapture() {
           <p className='text-3xl text-blue-500 font-bold'>{timestamp.slice(19,30)}</p>
         </div>
         <div className='h-28 text-center m-2 rounded'>
-          <div className='bg-yellow-500/50 h-28 rounded'>Google Map</div>
+          <div className='bg-yellow-300/50 h-28 rounded'>Google Map</div>
         </div>
         <div className="p-2">
           <TextField id="outlined-basic" autoFocus label="MSSV" value={mssv} onChange={handleMSSV} className="w-full bg-white/70 rounded shadow" />
