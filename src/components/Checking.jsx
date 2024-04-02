@@ -1,13 +1,14 @@
 import React, { useState,useEffect } from 'react';
 import Webcam from 'react-webcam';
 import TextField from '@mui/material/TextField';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 
 export default function WebcamCapture() {
-  const [imageData, setImageData] = useState(null);
+  const [imageData, setImageData] = useState('');
   const [timestamp, setTimestamp] = useState('');
   const [mssv, setMSSV] = useState('');
-  const [locationX, setLocationX] = useState('');
-  const [locationY, setLocationY] = useState('');
+  const [locationMap, setLocationMap] = useState({ lat: 0, lng: 0});
+  const [locationName, setLocationName] = useState('');
   const [minhchung,setMinhChung] = useState(false);
 
   const webcamRef = React.useRef(null);
@@ -51,42 +52,29 @@ export default function WebcamCapture() {
     setTimestamp(formattedTime);
   };
   
-
-  // const handleLocation = async () => {
-  //   // https://maps.googleapis.com/maps/api/geocode/json?latlng=10.784165,106.641308&key=AIzaSyDJw4YBhyKaoLAtuAyVRW6XW6fHIrDRrcg
-  //   if (navigator.geolocation) {
-  //     navigator.geolocation.getCurrentPosition(async (position) => {
-  //       const { latitude, longitude } = position.coords;
-  //       const apiKey = 'AIzaSyDiVHlUBip2Tw1yWwCSSm3K4Zr6gJtVCdM';
-  //       const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`);
-  //       console.log(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`)
-  //       const data = await response.json();
-  //       if (data.status === 'OK') {
-  //         const locationName = data.results[0].formatted_address;
-  //         setLocation(locationName);
-  //       } else {
-  //         console.error('Error:', data.status);
-  //         setLocation('Cannot fetch location');
-  //       }
-  //     });
-  //   } else {
-  //     console.error('Geolocation is not supported by this browser.');
-  //     setLocation('Geolocation is not supported by this browser.');
-  //   }
-  // };
-
-  const handleLocation = () => {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const latitude = position.coords.latitude;
-        const longitude = position.coords.longitude;
-        setLocationX(latitude)
-        setLocationY(longitude)
+  const handleLocation = async () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const { latitude, longitude } = position.coords;
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
+        const data = await response.json();
+        setLocationMap({lat:latitude,lng:longitude})
+        if (!data.error) {
+          const locationName = data.display_name;
+          setLocationName(locationName);
+        } else {
+          console.error('Error:', data.error);
+          setLocationName('Cannot fetch location');
+        }
       });
-  }
+    } else {
+      console.error('Geolocation is not supported by this browser.');
+      setLocationName('Geolocation is not supported by this browser.');
+    }
+  };
 
   const postData = async () => {
-    console.log(mssv,imageData,timestamp,'X:',locationX,'Y:',locationY);
+    console.log(mssv,imageData.slice(0,20),timestamp,locationName,locationMap.lat,locationMap.lng);
     setMinhChung(true)
   };
 
@@ -115,15 +103,24 @@ export default function WebcamCapture() {
 
   return (
     <div className='pb-10'>
-      <div className='bg-white/70 m-2 rounded'>
-        <div className='text-center'>
+      <div className='bg-white/70 m-2 pt-2 rounded'>
+        <div className='text-center p-1'>
           <p className='font-bold text-gray-700 '>{timestamp.slice(0,18)}</p>
           <p className='text-3xl text-blue-500 font-bold'>{timestamp.slice(19,30)}</p>
         </div>
-        <div className='h-28 text-center m-2 rounded'>
-          <div className='bg-yellow-300/50 h-28 rounded'>Google Map</div>
+        <div className='text-center px-1 rounded'>
+          {/* <MapContainer center={locationMap} zoom={18} style={{ height: '400px', width: '100%'}}>
+              <TileLayer
+                url={`https://www.openstreetmap.org/18/${locationMap.lat}/${locationMap.lng}`}
+              />
+              <Marker position={locationMap}>
+                <Popup>Your Location</Popup>
+              </Marker>
+            </MapContainer> */}
+            <iframe src={`https://www.openstreetmap.org/export/embed.html?bbox=${locationMap.lng-0.01}%2C${locationMap.lat-0.01}%2C${locationMap.lng+0.01}%2C${locationMap.lat+0.01}&layer=mapnik&zoom=19`} className='w-full'></iframe>
+
         </div>
-        <div className="p-2">
+        <div className="p-1">
           <TextField id="outlined-basic" autoFocus label="MSSV" value={mssv} onChange={handleMSSV} className="w-full bg-white/70 rounded shadow" />
         </div>
 
@@ -136,14 +133,22 @@ export default function WebcamCapture() {
           screenshotFormat="image/jpeg"
           style={{ width: '100%' }}
           videoConstraints={videoConstraints}
-          className="rounded-lg"
+          className="rounded"
         />
         <div className="w-full pt-2">
             <button onClick={handleSubmit} className="border border-green-500 w-full text-green-500 rounded p-3 text-xl shadow">Checkin</button>
         </div>
       </div>
       <div>
-        {minhchung&&<p>Đây là kết quả chấm công của bạn hãy chụp lại màng hình để làm minh chứng</p>}
+        {minhchung &&
+          <div className='p-1 bg-white/70 rounded m-2'>
+            <p className='text-gray-700'>Thời gian: {timestamp}</p>
+            <p className='text-gray-700'>Địa điểm: {locationName}</p>
+            <p className='text-gray-700'>Tọa độ Map: {locationMap.lat},{locationMap.lng}</p>
+            <p className='text-gray-700'>MSSV: {mssv}</p>
+            <img src={imageData} className='w-full rounded' />
+            <p className='text-blue-500 italic text-center'>*Lưu ý: đây là demo</p>
+          </div>}
       </div>
     </div>
   );
